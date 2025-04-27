@@ -1,0 +1,10 @@
+#Sun Apr 27 20:01:02 CST 2025
+path.2=6/classes.dex
+path.1=0/classes.dex
+path.0=classes.dex
+renamed.2=classes3.dex
+renamed.1=classes2.dex
+renamed.0=classes.dex
+base.2=D\:\\my_project\\android-camera-socket-stream-master\\AndroidStocketSream\\app\\build\\intermediates\\dex\\debug\\mergeProjectDexDebug\\6\\classes.dex
+base.1=D\:\\my_project\\android-camera-socket-stream-master\\AndroidStocketSream\\app\\build\\intermediates\\dex\\debug\\mergeProjectDexDebug\\0\\classes.dex
+base.0=D\:\\my_project\\android-camera-socket-stream-master\\AndroidStocketSream\\app\\build\\intermediates\\dex\\debug\\mergeExtDexDebug\\classes.dex

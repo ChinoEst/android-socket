@@ -1,0 +1,18 @@
+
+# Android
+.gradle/
+local.properties
+*.iml
+build/
+captures/
+.externalNativeBuild/
+
+# IntelliJ
+.idea/
+*.iws
+*.ipr
+*.iml
+
+# others
+.DS_Store
+

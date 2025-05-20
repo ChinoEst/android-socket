@@ -1,29 +1,33 @@
-<?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="wrap_content"
+    android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:padding="24dp">
+    android:padding="24dp"
+    android:background="@drawable/bg_dialog_rounded">
 
+    <!-- 標題 -->
     <TextView
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="請選擇難度:"
         android:textSize="20sp"
-        android:layout_gravity="center_horizontal"
-        android:layout_marginBottom="16dp" />
+        android:textStyle="bold"
+        android:gravity="center"
+        android:layout_marginBottom="20dp" />
 
+    <!-- 難度下拉選單 -->
     <Spinner
         android:id="@+id/spinner"
-        android:layout_width="200dp"
+        android:layout_width="match_parent"
         android:layout_height="48dp"
-        android:layout_gravity="center_horizontal"
+        android:layout_marginBottom="24dp"
+        android:background="@drawable/bg_spinner_rounded"
         android:padding="8dp" />
 
+    <!-- 按鈕區塊 -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="24dp"
         android:orientation="horizontal"
         android:gravity="end">
 
@@ -31,13 +35,17 @@
             android:id="@+id/btnCancel"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="取消" />
+            android:text="取消"
+            android:backgroundTint="#CCCCCC"
+            android:textColor="#333333" />
 
         <Button
             android:id="@+id/btnConfirm"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="確定"
+            android:backgroundTint="#4CAF50"
+            android:textColor="#FFFFFF"
             android:layout_marginStart="16dp" />
     </LinearLayout>
 </LinearLayout>

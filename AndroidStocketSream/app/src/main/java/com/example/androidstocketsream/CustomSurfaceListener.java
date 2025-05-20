@@ -11,7 +11,7 @@ public class CustomSurfaceListener implements TextureView.SurfaceTextureListener
     protected CameraHandler cameraHandler;
     protected SocketStream socketStream;
     protected TextureView textureView;
-    protected int interval = 120;
+    protected int interval = 135;
     protected VoiceHandler voiceHandler;
     private MainActivity mainActivity;
     private Handler handler;
@@ -72,13 +72,13 @@ public class CustomSurfaceListener implements TextureView.SurfaceTextureListener
                                 voiceHandler.playAudioByNumber(21); // 播放 raw21.mp3
                                 Log.d(StateSingleton.getInstance().TAG, "raw21");
 
-                                // 停止等待
+                                // stop waiting
                                 StateSingleton.getInstance().waitInterval = false;
 
-                                // raw21.mp3 播放后，继续扫描
+
                                 Log.d(StateSingleton.getInstance().TAG, "onSurfaceTextureUpdated first end");
 
-                                // 线程计数归零
+
                                 StateSingleton.getInstance().setThreadCount(0);
                             }
                             //not in image
@@ -91,6 +91,17 @@ public class CustomSurfaceListener implements TextureView.SurfaceTextureListener
                                 //ask to redo
                                 voiceHandler.playAudioByNumber(20);
                                 StateSingleton.getInstance().runScanning = false;
+
+                                handler.postDelayed(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        StateSingleton.getInstance().runScanning = true;
+                                        StateSingleton.getInstance().waitInterval = false;
+                                        Log.d(StateSingleton.getInstance().TAG, "restarted");
+                                    }
+                                }, 10000);//after 10s, scan again
+
+
                             }
                         }
                          else{
@@ -99,12 +110,12 @@ public class CustomSurfaceListener implements TextureView.SurfaceTextureListener
                             //fail in first photo
                             StateSingleton.getInstance().first = true;
 
-                            //ask to redo
+                            //ask to reconnect
                             voiceHandler.playAudioByNumber(22);
                             StateSingleton.getInstance().runScanning = false;
                         }
                     }
-                }, 5000); // 延遲 4000 毫秒 (4 秒)
+                }, 6000); //afer raw1 play
             }else {
                 //after first time
 
@@ -115,7 +126,7 @@ public class CustomSurfaceListener implements TextureView.SurfaceTextureListener
                     new Handler().postDelayed(new Runnable() {
                         @Override
                         public void run() {
-                            // 檢查是否還在 scanning 中
+                            // check still in scanning
                             if (StateSingleton.getInstance().runScanning) {
                                 Log.d(StateSingleton.getInstance().TAG, "Timeout reached, calling checkAllThreadsCompleted()");
                                 StateSingleton.getInstance().runScanning = false;
@@ -123,13 +134,11 @@ public class CustomSurfaceListener implements TextureView.SurfaceTextureListener
                                 first_handle = true;
                             }
                         }
-                    }, 5 *60 * 1000); // 5分鐘 = 5 * 60 * 1000 毫秒
+                    }, 5 *60 * 1000); // after 5 mins , stop by itself
                 }
 
 
 
-
-                //generate subthread
                 StateSingleton.getInstance().waitInterval = true;
 
 
@@ -137,23 +146,25 @@ public class CustomSurfaceListener implements TextureView.SurfaceTextureListener
                 StateSingleton.getInstance().started = true;
 
 
-                // 启动线程并增加计数器socketThread.start();
+                // count number of threads
                 StateSingleton.getInstance().incrementThreadCount();
                 Log.d(StateSingleton.getInstance().TAG, "thread count:"+StateSingleton.getInstance().getThreadCount());
 
-
-                Thread socketThread = new Thread(new SocketThread(this.textureView, this.socketStream));
+                //generate new thread to get photo
+                Thread socketThread = new Thread(new SocketThread(this.textureView, this.socketStream) {
+                    @Override
+                    public void run() {
+                        try {
+                            super.run();  // 執行原本的 run()
+                        } finally {
+                            StateSingleton.getInstance().decrementThreadCount();
+                            Log.d(StateSingleton.TAG, "thread count decremented");
+                        }
+                    }
+                });
                 socketThread.start();
 
-
-                // 線程完成後執行計數器遞減邏輯
-                socketThread.setUncaughtExceptionHandler((thread, throwable) -> {
-                    StateSingleton.getInstance().decrementThreadCount();
-                });
-
-
-
-
+                //stop for a while
                 new Handler().postDelayed(new Runnable() {
                     @Override
                     public void run() {
@@ -162,6 +173,7 @@ public class CustomSurfaceListener implements TextureView.SurfaceTextureListener
                 }, interval);
             }
         } else if (StateSingleton.getInstance().started && !StateSingleton.getInstance().runScanning && !StateSingleton.getInstance().first) {
+            //finish all of thread
             checkAllThreadsCompleted();
 
 
@@ -171,14 +183,14 @@ public class CustomSurfaceListener implements TextureView.SurfaceTextureListener
 
 
 
-    // 檢查所有線程是否完成並播放語音
+    // after all of thread finish,
     private void checkAllThreadsCompleted() {
         Log.d(StateSingleton.getInstance().TAG, "final thread count:"+StateSingleton.getInstance().getThreadCount());
         if (StateSingleton.getInstance().areAllThreadsComplete()) {
-            new Thread(() -> {
-                StateSingleton.getInstance().started = false;
-                socketStream.attemptSend3(true);
-            }).start(); // 👉 括號合起來之後才 .start()
+
+            StateSingleton.getInstance().started = false;
+            //send analyze
+            //socketStream.attemptSend3(true);
         }
     }
 

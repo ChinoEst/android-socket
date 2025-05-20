@@ -32,13 +32,15 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        //  SocketStream 被初始化
+        //  SocketStream Initialize...
         initSocketStream();
-        //  handler, voice, cemera 初始化
+        //  handler, voice, cemera Initialize...
         initViews();
-        //主判斷邏輯
+
+        //button
         initListener();
     }
+
 
     private void initSocketStream(){
         if (StateSingleton.getInstance().getSocketStream() == null) {
@@ -49,6 +51,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+
     private void initViews(){
         textureView = findViewById(R.id.texture);
         startBtn = findViewById(R.id.btn_start);
@@ -58,6 +61,7 @@ public class MainActivity extends AppCompatActivity {
         textureView.setSurfaceTextureListener(new CustomSurfaceListener(this, cameraHandler, voiceHandler, textureView));
     }
 
+
     private void initListener(){
         this.startBtn.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -65,22 +69,28 @@ public class MainActivity extends AppCompatActivity {
 
                 startBtn.setEnabled(false);
 
-                new Handler().postDelayed(() -> startBtn.setEnabled(true), 1500);
+                //for not to click too fast
+                new Handler().postDelayed(() -> startBtn.setEnabled(true), 30000);
 
-                //開始執行拍照
+                //start to take a photo
                 if (!StateSingleton.getInstance().runScanning){
                     startScanFlow();
 
                 }
                 else {
-                    Log.d(StateSingleton.getInstance().TAG, "nothing");
-                    //SocketStream socketStream = StateSingleton.getInstance().getSocketStream();
-                    //close camera
+                    //Log.d(StateSingleton.getInstance().TAG, "nothing");
+                    SocketStream socketStream = StateSingleton.getInstance().getSocketStream();
+                    //send "analyze"
+                    socketStream.attemptSend3(true);
+
+                    //stop taking a picture
                     StateSingleton.getInstance().runScanning = false;
+
                     //cameraHandler.closeCamera();
+
                     //textureView.setSurfaceTextureListener(null);
+
                     //socketStream.re();
-                    //停止拍照，並準備跳至MainActivity2
                     stopscan_2main2();
                 }
             }
@@ -93,53 +103,58 @@ public class MainActivity extends AppCompatActivity {
         StateSingleton.getInstance().started = true;
 
         if (voiceHandler != null) {
-            voiceHandler.playAudioByNumber(1); // 如果非空则调用
+            voiceHandler.playAudioByNumber(1);
         } else {
             Log.e("MainActivity", "voiceHandler is null!");
         }
 
         Log.d(StateSingleton.getInstance().TAG, "handler.postDelayed1");
 
-        // 延遲 20 秒後設置 runScanning 為 true
+        // after 17 seconds, do obkection detection
         handler.postDelayed(new Runnable() {
             @Override
             public void run() {
                 Log.d(StateSingleton.getInstance().TAG, "handler.postDelayed2");
                 StateSingleton.getInstance().runScanning = true;
             }
-        }, 20000); // 延遲 20000 毫秒 (20 秒)
+        }, 16500);
         handler.postDelayed(new Runnable() {
             @Override
             public void run() {
                 Log.d(StateSingleton.getInstance().TAG, "handler.postDelayed2");
                 setRaw1_end(true);
             }
-        }, 24000); // 延遲 20000 毫秒 (20 秒)
+        }, 23000); // 延遲 20000 毫秒 (20 秒)
     }
 
     public void stopscan_2main2(){
         //停止運作
 
-        StateSingleton.getInstance().runScanning = false;
+        //StateSingleton.getInstance().runScanning = false;
         //textureView.setSurfaceTextureListener(null);
-        voiceHandler.playAudioByNumber(4);
+
+        //play raw4.mp3
+        voiceHandler.playAudioByNumber(3);
+
+        //show cutscene
         showLoadingDialog();
 
+        //check successResponse3 every 5 seconds on thread
         checkThread = new Thread(() -> {
             SocketStream socketStream = StateSingleton.getInstance().getSocketStream();
-            while (!socketStream.isSuccessResponse3()) {
+            while (!socketStream.isResponse3_finish()) {
                 Log.d("SocketStatus", "Socket connected: " + socketStream.isConnected());
                 try {
-                    Thread.sleep(5000); // 每5秒檢查一次
+                    Thread.sleep(5000);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
             }
 
-            // 當 successResponse3 成功，切回主線程處理
+            // after successResponse3 success, back to main process and switch to mainactivity2
             runOnUiThread(() -> {
                 Log.d(StateSingleton.getInstance().TAG, "mainactivity2 start!");
-
+                //close cutscene
                 hideLoadingDialog();
                 Intent intent = new Intent(MainActivity.this, MainActivity2.class);
                 startActivity(intent);
@@ -147,11 +162,18 @@ public class MainActivity extends AppCompatActivity {
         });
         checkThread.start();
 
+        //try to closeCamera
+        cameraHandler.closeCamera();
+        if (textureView != null && textureView.isAvailable()) {
+            textureView.getSurfaceTexture().release();
+            textureView.setSurfaceTextureListener(null);
+            textureView = null;
+        }
     }
 
 
 
-    // 可提供 getter 和 setter 方法來存取 success 變數
+
     public boolean isRaw1_end() {
         return Raw1_end;
     }

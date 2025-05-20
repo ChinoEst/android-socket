@@ -10,9 +10,11 @@ import java.util.Arrays;
 
 
 
-import com.github.nkzawa.emitter.Emitter;
-import com.github.nkzawa.socketio.client.IO;
-import com.github.nkzawa.socketio.client.Socket;
+import io.socket.client.IO;
+import io.socket.client.Socket;
+import io.socket.emitter.Emitter;
+
+
 
 
 
@@ -33,7 +35,7 @@ public class SocketStream {
     /*
         Handles the communication with the REST-Socket
      */
-    private static final String url = "http://192.168.196.77:5000";
+    private static final String url = "http://140.116.245.200:65501";
 
     private Socket mSocket;
     private final List <Bitmap> imageList = new ArrayList<>(); // 存圖片名稱與 Bitmap
@@ -41,7 +43,7 @@ public class SocketStream {
     private final Object successLock = new Object();
     private final AtomicBoolean successResponse_bbox = new AtomicBoolean(false);
     private final AtomicBoolean successResponse_connect = new AtomicBoolean(false);
-    private final AtomicBoolean successResponse2 = new AtomicBoolean(false);
+    //private final AtomicBoolean successResponse2 = new AtomicBoolean(false);
     private final AtomicBoolean successResponse3 = new AtomicBoolean(false);
     private final AtomicBoolean Response3_finish = new AtomicBoolean(false);
     private final Context context;  //
@@ -59,11 +61,13 @@ public class SocketStream {
         Log.d("SocketStream", "Constructor called");
         this.context = context.getApplicationContext();
         try {
-            mSocket = IO.socket(url);
+            IO.Options options = new IO.Options();
+            options.transports = new String[] {"websocket"};
+            mSocket = IO.socket(url, options);
 
 
             mSocket.on("response1", onResponse1);
-            mSocket.on("response2", onResponse2);
+            //mSocket.on("response2", onResponse2);
             mSocket.on("response3", onResponse3);
             mSocket.on("response4", onResponse4);
 
@@ -101,7 +105,8 @@ public class SocketStream {
 
 
 
-    // 定义监听器
+    // for bbox return
+    // for bbox return
     private final Emitter.Listener onResponse1 = new Emitter.Listener() {
         @Override
         public void call(Object... args) {
@@ -122,6 +127,7 @@ public class SocketStream {
     };
 
 
+    /*
     private final Emitter.Listener onResponse2 = new Emitter.Listener() {
         @Override
         public void call(Object... args) {
@@ -142,6 +148,8 @@ public class SocketStream {
             }
         }
     };
+
+     */
 
 
 
@@ -179,12 +187,16 @@ public class SocketStream {
         }
     };
 
+
+    //use for check Listener working
+
     private final Emitter.Listener onResponse4 = new Emitter.Listener() {
         @Override
         public void call(Object... args) {
             Log.d(StateSingleton.getInstance().TAG, "test onResponse4 get");
         }
     };
+
 
 
 
@@ -219,12 +231,13 @@ public class SocketStream {
     }
 
 
-    // 回调接口定义
+
     public interface OnImagesReadyCallback {
         void onImagesReady(List<Bitmap> images);
     }
 
 
+    //send photos we take to server
     public void attemptSend(byte[] message) {
         try {
             //pass picture and connection status
@@ -239,6 +252,7 @@ public class SocketStream {
         }
     }
 
+
     public void attemptSend2(String message) {
         try {
             mSocket.emit("transfer", message);
@@ -247,6 +261,8 @@ public class SocketStream {
         }
     }
 
+
+    //send difficult and ask analyze start
     public void attemptSend3(boolean value) {
         try {
             // 将布尔值直接发送
@@ -256,6 +272,7 @@ public class SocketStream {
             Log.e(StateSingleton.getInstance().TAG, "SocketStream encountered an error while sending a boolean to the server!", e);
         }
     }
+
 
     private Bitmap decodeBase64ToBitmap(String base64Str) {
         try {
@@ -278,9 +295,13 @@ public class SocketStream {
         return successResponse_connect.get();
     }
 
+    /*
     public boolean isSuccessResponse2() {
         return successResponse2.get();
     }
+
+
+     */
 
     public boolean isSuccessResponse3() {
         return successResponse3.get();
@@ -297,9 +318,11 @@ public class SocketStream {
         this.successResponse_connect.set(received);
     }
 
+    /*
     public void setSuccessResponse2(boolean received) {
         this.successResponse2.set(received);
     }
+     */
 
     public void setSuccessResponse3(boolean received) {
         this.successResponse3.set(received);

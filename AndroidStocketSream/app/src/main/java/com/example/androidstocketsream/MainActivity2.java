@@ -32,25 +32,30 @@ public class MainActivity2 extends AppCompatActivity {
         viewPager = findViewById(R.id.viewPager);
         resetButton = findViewById(R.id.resetButton);
 
-        // 設置 ViewPager2 的適配器
-        adapter = new ImagePagerAdapter(new ArrayList<>()); // 初始化為空
+        // set ViewPager2
+        adapter = new ImagePagerAdapter(new ArrayList<>()); //
         viewPager.setAdapter(adapter);
 
-        // 取得 SocketStream 實例
+        // get SocketStream
         SocketStream socketStream = StateSingleton.getInstance().getSocketStream();
         Log.d(StateSingleton.getInstance().TAG, "after socketStream");
 
         if (socketStream != null) {
-            // 設定回說，圖片處理完畢後觸發
+            // if photo exists, update
+            if (!socketStream.getImageList().isEmpty()) {
+                adapter.updateImages(socketStream.getImageList());
+                Log.d(StateSingleton.getInstance().TAG, "Images updated directly from existing imageList");
+            }
+            //or after photo finish, update
             socketStream.setOnImagesReadyCallback(images -> runOnUiThread(() -> {
-                adapter.updateImages(images); // 更新圖片
-                Log.d(StateSingleton.getInstance().TAG, "Images updated in ViewPager");
+                adapter.updateImages(images);
+                Log.d(StateSingleton.getInstance().TAG, "Images updated in ViewPager via callback");
             }));
         } else {
             Log.e("MainActivity2", "SocketStream is null.");
         }
 
-        // 按鈕點擊事件：初始化變數並返回主畫面
+        // btn to restart
         resetButton.setOnClickListener(v -> {
             resetParameters();
             Intent intent = new Intent(MainActivity2.this, MainActivity_home.class);
@@ -58,12 +63,6 @@ public class MainActivity2 extends AppCompatActivity {
             finish();
         });
 
-        new Handler(Looper.getMainLooper()).postDelayed(() -> {
-            if (socketStream != null && !socketStream.isSuccessResponse2()) {
-                Log.e("MainActivity2", "No response2 received within 30 seconds");
-                // 可選：顯示錯誤提示
-            }
-        }, 30000); // 30 秒超時
     }
 
 

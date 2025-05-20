@@ -4,95 +4,84 @@ import json
 from scipy.ndimage import gaussian_filter1d
 import numpy as np
 from scipy.signal import find_peaks
+import eventlet
+import logging
+from eventlet import tpool
 
 
-
-def read_jason(path):
-    temp = []
-    with open(path, 'r') as file:
-        json_data = json.load(file)
-        j_data = json_data[0]
-        
-    for j in range(23):
-        
-        x = int(j_data["keypoints"][j][0])
-        y = int(j_data["keypoints"][j][1])
-
-        temp.append((x,y))
-
-
-    return temp   
-
-
-
-def diff(tent, pre):
-    x1, y1 = tent
-    x2, y2 = pre
-    
-    return ((x1 - x2) ** 2 + (y1 - y2) ** 2) ** 0.5
-
-
-
-def keyframe_extration():
-    
-    path = 'analyze/analyze_output'
-    
-    List = [jason for jason in os.listdir(path) if jason.endswith(".json")]
-    sorted_file_list = sorted(List, key=lambda x: tuple(map(int, re.findall(r'\d+', x))))
-    #print(sorted_file_list)
+def keyframe_extraction(result_list):
+    logging.info("[INFO] keyframe_extraction start!")
+    keypoint_list = result_list["keypoints"]
+    bbox_list = result_list["bbox"]
     
     del_list = sorted([19, 20], reverse=True)
-    frame = 5
     sigma = 2
-    pre = []
-    buffer = 0
-    for_plt_x = []
-    for_plt_y = []
-    
-    #full = {str(i): [] for i in range(23) if not i in del_list}
+    min_valley_length = 1
+    diff_threshold = 70
+
+    def diff(tent, pre):
+        x1, y1 = tent
+        x2, y2 = pre
+        
+        return ((x1 - x2) ** 2 + (y1 - y2) ** 2) ** 0.5
     
 
-    for i in range(0, len(List), frame):
-        if os.path.exists(f"{path}/{i}.json"):            
-            
-            temp = read_jason(f"{path}/{i}.json")
-            
+        
+        
+    try:
+        for_plt_x = []
+        for_plt_y = []
+        buffer = 0
+        pre = []
+        for i in range(0, len(keypoint_list)):
+                                
             if len(pre) == 0:
-                pre = temp
+                pre = keypoint_list[i]
                         
             else:
-                for i in range(23):
-                    if not i in del_list:
-                        loss = diff(temp[i], pre[i])
+                for j in range(23):
+                    if not j in del_list:
+                        loss = diff(keypoint_list[i][j], pre[j])
                         #full[f"{i}"].append(loss)
                         buffer += loss
                         
                 for_plt_x.append(i)
                 for_plt_y.append(buffer)
                 
-                pre = temp
-            
+                pre = keypoint_list[i]
+                
             buffer = 0
-    
-    for_plt_y = gaussian_filter1d(for_plt_y, sigma)
-    
-    
-    y = np.array(for_plt_y)
-    
-    
-    valleys, _ = find_peaks(-y)
-    min_valley_length = 1
-    diff_threshold = 25
-    
-    keyframes = []
-    
-    
-    for i in range(1, len(valleys)):
-        valley_index = valleys[i]
-        if y[valley_index] < diff_threshold:
-            keyframes.append(valley_index * frame)
+        
+        for_plt_y = gaussian_filter1d(for_plt_y, sigma)
+        
+        y = np.array(for_plt_y)
+        
+        
+        
+        valleys, _ = find_peaks(-y)         
+        keyframes = []
+        
+        
+        for i in range(1, len(valleys)):
+            valley_index = valleys[i]
+            if y[valley_index] < diff_threshold:
+                keyframes.append(valley_index)
 
-            
-    
-    #return list of name of image
-    return keyframes
+        keypoint_result = [keypoint_list[int(x)] for x in keyframes]
+        
+        bbox_result = [bbox_list[int(x)] for x in keyframes]
+        #print(bbox_result)
+        idx = [int(x) for x in keyframes]
+        
+        result = {"keypoints":keypoint_result, "bbox":bbox_result, "idx": idx}
+        
+                
+
+        logging.info(f"idx:{idx}")
+        logging.info("[INFO] keyframe_extraction finish!")
+        return result
+    except Exception as e:
+        logging.error(f"[ERROR] keyframe_extraction error: {str(e)}", exc_info=True)
+        print(str(e))
+
+  

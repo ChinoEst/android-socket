@@ -3,25 +3,20 @@ import os
 import math
 import numpy as np
 import cv2
-
+import logging
 
 
 class PoseHandler:
-    def __init__(self, file_name, error, align, pose):
+    def __init__(self, idx, keypoints, error, align, pose, status):
         
-        self.path = os.path.join("analyze/analyze_output", f"{file_name}.json")
+        self.path = os.path.join(f"{status}/analyze", f"{idx}.jpg")
         self.error = error
         self.align = align
         self.pose = pose
-        
-        with open(f'{self.path}', 'r') as f:
-            json_data = json.load(f)
-            j_data = json_data[0]
-            
-        self.img = cv2.imread(os.path.join("analyze", f"{file_name}.jpg"))
+        self.img = cv2.imread(self.path)
         
         
-        self.kp = np.array(j_data["keypoints"]).reshape(23, 2)
+        self.kp = keypoints
         
         self.names = [
         "nose", "left_eye", "right_eye", "left_ear", "right_ear",
@@ -296,11 +291,11 @@ class PoseHandler:
     
         keypoints = [np.array(p) for p in self.kp]
     
-        # 步驟1：計算骨盆中心 hip_mid，做平移
+
         hip_mid = (self.left_hip + self.right_hip) / 2
         keypoints_centered = [p - hip_mid for p in keypoints]
     
-        # 步驟2：用肩膀中點與 hip_mid 的向量做旋轉對齊
+
         shoulder_mid = (self.left_shoulder + self.right_shoulder) / 2
         torso_vector = shoulder_mid - hip_mid
     
@@ -323,10 +318,12 @@ class PoseHandler:
         v2 = np.array(k3) - np.array(k2)
         
         if full_degree:
-            angle_rad = np.arctan2(np.cross(v1, v2), np.dot(v1, v2))  # 可以得到帶方向的角度
+            angle_rad = np.arctan2(np.cross(v1, v2), np.dot(v1, v2))  
             angle_deg = np.degrees(angle_rad)
             if angle_deg < 0:
                 angle_deg += 360
+                
+            
                 
         else:
             dot = np.dot(v1, v2)
@@ -334,7 +331,10 @@ class PoseHandler:
             cos_angle = dot / norm_product
             angle_rad = np.arccos(np.clip(cos_angle, -1.0, 1.0))
             angle_deg = np.degrees(angle_rad)
-            
+        
+        #logging.info(f"[INFO] ask_angle:{angle}")    
+        #logging.info(f"[INFO] people_angle:{angle_deg}!")    
+        
         if mode == ">":
             result =  angle_deg > angle
         elif mode == "<": 
@@ -469,31 +469,46 @@ class PoseHandler:
     
                             
 
-def correct(pose_file_list, error, align):
-    used = set()
+
+
+def correct(result_json, error, align, status):
+    logging.info("[INFO] correct start!")
+
     image_set = []
+    path = f"D:/my_project/android-camera-socket-stream-master/server/{status}/analyze"
 
     
-    for pose, filename in pose_file_list:
-        if pose not in used:
-            used.add(int(pose))
-            handler = PoseHandler(filename, error, align, int(pose))
+    result = result_json["result"]
+    
+    
+    for key in result.keys():
+        logging.info(f"[INFO] pose: {int(key)+1}")
+        pose_data = result[key]
+        idx =  pose_data["idx"]
+        keypoints = pose_data["keypoints"]
+        
+        handler = PoseHandler(idx, keypoints, error, align, int(key)+1, status)
+    
+        if align:
+            handler.align_pose()
+    
+        #right or left
+        detect_fn = getattr(handler, f"detect_side_case_{int(key)+1}", None)
+        if detect_fn:
+            detect_fn()
+    
+        #correct or not
+        handle_fn = getattr(handler, f"handle_case_{int(key)+1}", None)
+        if handle_fn:
+            handle_fn()
             
-            if align:
-                handler.align_pose()
-
-            # 判斷左右
-            detect_fn = getattr(handler, f"detect_side_case_{pose}", None)
-            if detect_fn:
-                detect_fn()
-
-            #姿勢正確與否
-            handle_fn = getattr(handler, f"handle_case_{pose}", None)
-            if handle_fn:
-                handle_fn()
-                
-            image_set.extend(handler.draw())
-    
+        #logging.info(f"[INFO] keypoints: {keypoints}")
+        #logging.info(f"[INFO] left:{handler.left}")
+        #logging.info(f"[INFO] down_left:{handler.down_left}")       
+        
+        image_set.extend(handler.draw())
+    logging.info("[INFO] correct finish!")
     return image_set
+    
 
 
